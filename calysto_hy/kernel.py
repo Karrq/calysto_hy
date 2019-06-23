@@ -132,7 +132,7 @@ class CalystoHy(MetaKernel):
         #### try to parse it:
         try:
             tokens = tokenize(code)
-            _ast = hy_compile(tokens, '', root=ast.Interactive)
+            _ast = hy_compile(tokens, 'calysto_hy', root=ast.Interactive)
             code = compile(_ast, "In [%s]" % self.execution_count, mode="single")
             # calls sys.displayhook:
             eval(code, self.env)
