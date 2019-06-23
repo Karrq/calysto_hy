@@ -7,13 +7,14 @@ import __future__  # NOQA
 
 import ast
 import sys
+import types
 import traceback
 
 from hy import hy
 from hy.version import __version__ as hy_version
 from hy.macros import load_macros
 from hy.lex import tokenize
-from hy.compiler import hy_compile
+from hy.compiler import hy_compile, HyASTCompiler
 from hy.core import language
 from metakernel import MetaKernel
 
@@ -100,9 +101,16 @@ class CalystoHy(MetaKernel):
         '''
         Create the hy environment
         '''
+        self.locals = {"__name__": "__console__", "__doc__": None}
+        module_name = self.locals.get('__name__', '__console__')
+        self.module = sys.modules.setdefault(module_name, types.ModuleType(module_name))
+        self.module.__dict__.update(self.locals)
+        self.locals = self.module.__dict__
+        self.compiler = HyASTCompiler(self.module)
+
         self.env = {}
         super(CalystoHy, self).__init__(*args, **kwargs)
-        [load_macros(m) for m in [hy.core, hy.macros]]
+        #[load_macros(m) for m in [hy.core, hy.macros]]
         if "str" in dir(__builtins__):
             self.env.update({key: getattr(__builtins__, key)
                              for key in dir(__builtins__)})
@@ -132,7 +140,7 @@ class CalystoHy(MetaKernel):
         #### try to parse it:
         try:
             tokens = tokenize(code)
-            _ast = hy_compile(tokens, 'calysto_hy', root=ast.Interactive)
+            _ast = hy_compile(tokens, '', root=ast.Interactive, compiler=self.compiler)
             code = compile(_ast, "In [%s]" % self.execution_count, mode="single")
             # calls sys.displayhook:
             eval(code, self.env)
